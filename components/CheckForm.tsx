@@ -19,6 +19,19 @@ export default function CheckForm({ onResult, apiKey, apiSecret, proxy, disabled
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleInput = (value: string) => {
+    const sep = value.includes(":") ? ":" : value.includes("|") ? "|" : null;
+    if (sep) {
+      const [parsedTk, parsedMk] = value.split(sep).map((s) => s.trim());
+      if (parsedTk && parsedMk) {
+        setTk(parsedTk);
+        setMk(parsedMk);
+        return;
+      }
+    }
+    setTk(value);
+  };
+
   const handleCheck = async () => {
     if (!tk || !mk) {
       setError("Vui lòng nhập tài khoản và mật khẩu");
@@ -113,9 +126,9 @@ export default function CheckForm({ onResult, apiKey, apiSecret, proxy, disabled
             <input
               type="text"
               value={tk}
-              onChange={(e) => setTk(e.target.value)}
+              onChange={(e) => handleInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Email hoặc SĐT"
+              placeholder="Email, SĐT hoặc tk:mk"
               disabled={disabled}
               className="w-full px-4 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             />
