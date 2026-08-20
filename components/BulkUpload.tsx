@@ -26,10 +26,12 @@ export default function BulkUpload({
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [delay, setDelay] = useState(300);
+  const [delay, setDelay] = useState(100);
+  const [concurrency, setConcurrency] = useState(5);
   const fileRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef(false);
   const resultsRef = useRef<CheckResult[]>([]);
+  const completedRef = useRef(0);
 
   const parseFile = (text: string) => {
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -74,6 +76,47 @@ export default function BulkUpload({
     reader.readAsText(file);
   };
 
+  const checkOne = async (tk: string, mk: string): Promise<CheckResult> => {
+    try {
+      const data: ApiRawResponse = await checkAccount(tk, mk, apiKey, apiSecret, proxy);
+      return {
+        tk,
+        mk,
+        status: data.status === "HIT" ? "live" : "die",
+        uid: data.uid,
+        username: data.username,
+        nickname: data.nickname,
+        aov_name: data.aov_name,
+        aov_rank: data.aov_rank,
+        aov_level: data.aov_level,
+        aov_banned: data.aov_banned,
+        aov_total_skins: data.aov_total_skins,
+        aov_total_champs: data.aov_total_champs,
+        aov_ss: data.aov_ss,
+        aov_ss_list: data.aov_ss_list,
+        aov_sss: data.aov_sss,
+        aov_sss_list: data.aov_sss_list,
+        aov_anime: data.aov_anime,
+        aov_anime_list: data.aov_anime_list,
+        region: data.region,
+        shells: data.shells,
+        email_verified: data.email_verified,
+        mobile_bound: data.mobile_bound,
+        fb_linked: data.fb_linked,
+        account_secured: data.account_secured,
+        password_set: data.password_set,
+        fc_name: data.fc_name,
+        fc_level: data.fc_level,
+        garena_created: data.garena_created,
+        last_login: data.last_login,
+        last_session_ip: data.last_session_ip,
+        last_session_country: data.last_session_country,
+      };
+    } catch {
+      return { tk, mk, status: "error" };
+    }
+  };
+
   const runCheck = async () => {
     if (accounts.length === 0) return;
 
@@ -83,73 +126,52 @@ export default function BulkUpload({
 
     if (currentIndex === 0) {
       resultsRef.current = [];
+      completedRef.current = 0;
     }
 
-    for (let i = currentIndex; i < accounts.length; i++) {
-      if (abortRef.current) break;
+    let nextIndex = currentIndex;
+    let activeCount = 0;
+    let resolveAll: () => void;
+    const allDone = new Promise<void>((r) => { resolveAll = r; });
 
-      setCurrentIndex(i);
-      const { tk, mk } = accounts[i];
-
-      const startTime = Date.now();
-
-      try {
-        const data: ApiRawResponse = await checkAccount(tk, mk, apiKey, apiSecret, proxy);
-
-        const result: CheckResult = {
-          tk,
-          mk,
-          status: data.status === "HIT" ? "live" : "die",
-          uid: data.uid,
-          username: data.username,
-          nickname: data.nickname,
-          aov_name: data.aov_name,
-          aov_rank: data.aov_rank,
-          aov_level: data.aov_level,
-          aov_banned: data.aov_banned,
-          aov_total_skins: data.aov_total_skins,
-          aov_total_champs: data.aov_total_champs,
-          aov_ss: data.aov_ss,
-          aov_ss_list: data.aov_ss_list,
-          aov_sss: data.aov_sss,
-          aov_sss_list: data.aov_sss_list,
-          aov_anime: data.aov_anime,
-          aov_anime_list: data.aov_anime_list,
-          region: data.region,
-          shells: data.shells,
-          email_verified: data.email_verified,
-          mobile_bound: data.mobile_bound,
-          fb_linked: data.fb_linked,
-          account_secured: data.account_secured,
-          password_set: data.password_set,
-          fc_name: data.fc_name,
-          fc_level: data.fc_level,
-          garena_created: data.garena_created,
-          last_login: data.last_login,
-          last_session_ip: data.last_session_ip,
-          last_session_country: data.last_session_country,
-        };
-
-        resultsRef.current.push(result);
-        onResult(result);
-      } catch {
-        const errResult: CheckResult = {
-          tk,
-          mk,
-          status: "error",
-        };
-        resultsRef.current.push(errResult);
-        onResult(errResult);
-      }
-
-      if (i < accounts.length - 1 && !abortRef.current) {
-        const elapsed = Date.now() - startTime;
-        const remainingDelay = Math.max(0, delay - elapsed);
-        if (remainingDelay > 0) {
-          await new Promise((r) => setTimeout(r, remainingDelay));
+    const startNext = async () => {
+      while (nextIndex < accounts.length && !abortRef.current) {
+        if (activeCount >= concurrency) {
+          await new Promise((r) => setTimeout(r, 50));
+          continue;
         }
+
+        const idx = nextIndex++;
+        const { tk, mk } = accounts[idx];
+        activeCount++;
+
+        checkOne(tk, mk).then((result) => {
+          resultsRef.current.push(result);
+          onResult(result);
+          completedRef.current++;
+          setCurrentIndex(completedRef.current);
+          activeCount--;
+
+          if (delay > 0) {
+            setTimeout(startNext, delay);
+          } else {
+            startNext();
+          }
+        });
       }
-    }
+
+      const waitIdle = () => {
+        if (activeCount > 0) {
+          setTimeout(waitIdle, 50);
+        } else {
+          resolveAll!();
+        }
+      };
+      waitIdle();
+    };
+
+    startNext();
+    await allDone;
 
     setRunning(false);
     setCurrentIndex(accounts.length);
@@ -223,18 +245,32 @@ export default function BulkUpload({
             </span>
           </div>
 
-          {/* Delay setting */}
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium">Delay:</label>
-            <input
-              type="number"
-              value={delay}
-              onChange={(e) => setDelay(Math.max(0, Number(e.target.value)))}
-              min={0}
-              step={100}
-              className="w-24 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <span className="text-xs text-zinc-500">ms (0 = chạy ngay)</span>
+          {/* Settings */}
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium">Concurrency:</label>
+              <input
+                type="number"
+                value={concurrency}
+                onChange={(e) => setConcurrency(Math.max(1, Math.min(20, Number(e.target.value))))}
+                min={1}
+                max={20}
+                className="w-20 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-xs text-zinc-500">request song song</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium">Delay:</label>
+              <input
+                type="number"
+                value={delay}
+                onChange={(e) => setDelay(Math.max(0, Number(e.target.value)))}
+                min={0}
+                step={50}
+                className="w-24 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-xs text-zinc-500">ms giữa mỗi batch</span>
+            </div>
           </div>
 
           {/* Progress bar */}
