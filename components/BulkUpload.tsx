@@ -26,8 +26,8 @@ export default function BulkUpload({
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [delay, setDelay] = useState(100);
-  const [concurrency, setConcurrency] = useState(5);
+  const [delay, setDelay] = useState(500);
+  const [concurrency, setConcurrency] = useState(2);
   const fileRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef(false);
   const resultsRef = useRef<CheckResult[]>([]);
@@ -76,45 +76,65 @@ export default function BulkUpload({
     reader.readAsText(file);
   };
 
-  const checkOne = async (tk: string, mk: string): Promise<CheckResult> => {
-    try {
-      const data: ApiRawResponse = await checkAccount(tk, mk, apiKey, apiSecret, proxy);
-      return {
-        tk,
-        mk,
-        status: data.status === "HIT" ? "live" : "die",
-        uid: data.uid,
-        username: data.username,
-        nickname: data.nickname,
-        aov_name: data.aov_name,
-        aov_rank: data.aov_rank,
-        aov_level: data.aov_level,
-        aov_banned: data.aov_banned,
-        aov_total_skins: data.aov_total_skins,
-        aov_total_champs: data.aov_total_champs,
-        aov_ss: data.aov_ss,
-        aov_ss_list: data.aov_ss_list,
-        aov_sss: data.aov_sss,
-        aov_sss_list: data.aov_sss_list,
-        aov_anime: data.aov_anime,
-        aov_anime_list: data.aov_anime_list,
-        region: data.region,
-        shells: data.shells,
-        email_verified: data.email_verified,
-        mobile_bound: data.mobile_bound,
-        fb_linked: data.fb_linked,
-        account_secured: data.account_secured,
-        password_set: data.password_set,
-        fc_name: data.fc_name,
-        fc_level: data.fc_level,
-        garena_created: data.garena_created,
-        last_login: data.last_login,
-        last_session_ip: data.last_session_ip,
-        last_session_country: data.last_session_country,
-      };
-    } catch {
-      return { tk, mk, status: "error" };
+  const checkOne = async (tk: string, mk: string, retries = 3): Promise<CheckResult> => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const data: ApiRawResponse = await checkAccount(tk, mk, apiKey, apiSecret, proxy);
+
+        if (data.error) {
+          if (attempt < retries) {
+            await new Promise((r) => setTimeout(r, 1000 * attempt));
+            continue;
+          }
+          return {
+            tk, mk, status: "error",
+            error: data.error || data.details || "API error",
+          };
+        }
+
+        return {
+          tk, mk,
+          status: data.status === "HIT" ? "live" : "die",
+          uid: data.uid,
+          username: data.username,
+          nickname: data.nickname,
+          aov_name: data.aov_name,
+          aov_rank: data.aov_rank,
+          aov_level: data.aov_level,
+          aov_banned: data.aov_banned,
+          aov_total_skins: data.aov_total_skins,
+          aov_total_champs: data.aov_total_champs,
+          aov_ss: data.aov_ss,
+          aov_ss_list: data.aov_ss_list,
+          aov_sss: data.aov_sss,
+          aov_sss_list: data.aov_sss_list,
+          aov_anime: data.aov_anime,
+          aov_anime_list: data.aov_anime_list,
+          region: data.region,
+          shells: data.shells,
+          email_verified: data.email_verified,
+          mobile_bound: data.mobile_bound,
+          fb_linked: data.fb_linked,
+          account_secured: data.account_secured,
+          password_set: data.password_set,
+          fc_name: data.fc_name,
+          fc_level: data.fc_level,
+          garena_created: data.garena_created,
+          last_login: data.last_login,
+          last_session_ip: data.last_session_ip,
+          last_session_country: data.last_session_country,
+        };
+      } catch (err) {
+        if (attempt < retries) {
+          const backoff = 2000 * Math.pow(2, attempt - 1);
+          await new Promise((r) => setTimeout(r, backoff));
+          continue;
+        }
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        return { tk, mk, status: "error", error: msg };
+      }
     }
+    return { tk, mk, status: "error", error: "Max retries exceeded" };
   };
 
   const runCheck = async () => {

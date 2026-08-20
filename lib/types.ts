@@ -32,6 +32,7 @@ export interface CheckResult {
   fc_name?: string;
   fc_level?: number;
   last_session_ip?: string;
+  error?: string;
   raw?: unknown;
 }
 

@@ -213,9 +213,12 @@ export default function ResultTable({ results, onClear }: ResultTableProps) {
                       DIE
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-yellow-600">
+                    <span className="inline-flex items-center gap-1 text-yellow-600" title={result.error || ""}>
                       <AlertCircle className="w-4 h-4" />
                       ERROR
+                      {result.error && (
+                        <span className="text-xs text-zinc-500 ml-1 max-w-[120px] truncate">({result.error})</span>
+                      )}
                     </span>
                   )}
                 </td>
@@ -287,6 +290,9 @@ export default function ResultTable({ results, onClear }: ResultTableProps) {
               Chi tiết: {result.tk}
             </summary>
             <div className="mt-2 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg text-xs font-mono space-y-1">
+              {result.error && (
+                <p className="text-red-600 font-semibold">Lỗi: {result.error}</p>
+              )}
               <p>UID: {result.uid || "-"}</p>
               <p>Tên LQ: {result.aov_name || "-"}</p>
               <p>Rank: {result.aov_rank || "-"}</p>
