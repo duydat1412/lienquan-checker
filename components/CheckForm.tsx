@@ -33,6 +33,12 @@ export default function CheckForm({ onResult, apiKey, apiSecret, proxy, disabled
 
       if (data.error) {
         setError(data.error);
+        onResult({
+          tk,
+          mk,
+          status: "error",
+          raw: data,
+        });
         return;
       }
 
@@ -42,6 +48,7 @@ export default function CheckForm({ onResult, apiKey, apiSecret, proxy, disabled
         status: data.status === "HIT" ? "live" : "die",
         uid: data.uid,
         username: data.username,
+        nickname: data.nickname,
         aov_name: data.aov_name,
         aov_rank: data.aov_rank,
         aov_level: data.aov_level,
@@ -59,10 +66,14 @@ export default function CheckForm({ onResult, apiKey, apiSecret, proxy, disabled
         email_verified: data.email_verified,
         mobile_bound: data.mobile_bound,
         fb_linked: data.fb_linked,
+        account_secured: data.account_secured,
+        password_set: data.password_set,
+        fc_name: data.fc_name,
+        fc_level: data.fc_level,
         garena_created: data.garena_created,
         last_login: data.last_login,
+        last_session_ip: data.last_session_ip,
         last_session_country: data.last_session_country,
-        raw: data,
       };
 
       onResult(result);

@@ -22,8 +22,14 @@ export async function checkAccount(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Check failed");
+    let errorMsg = "Check failed";
+    try {
+      const error = await response.json();
+      errorMsg = error.error || errorMsg;
+    } catch {
+      errorMsg = `API error: ${response.status}`;
+    }
+    throw new Error(errorMsg);
   }
 
   return response.json();

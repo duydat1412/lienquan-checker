@@ -26,6 +26,12 @@ export interface CheckResult {
   garena_created?: string;
   last_login?: string;
   last_session_country?: string;
+  nickname?: string;
+  account_secured?: boolean;
+  password_set?: boolean;
+  fc_name?: string;
+  fc_level?: number;
+  last_session_ip?: string;
   raw?: unknown;
 }
 

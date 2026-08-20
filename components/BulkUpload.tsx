@@ -29,6 +29,7 @@ export default function BulkUpload({
   const [delay, setDelay] = useState(300);
   const fileRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef(false);
+  const resultsRef = useRef<CheckResult[]>([]);
 
   const parseFile = (text: string) => {
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -80,7 +81,9 @@ export default function BulkUpload({
     setPaused(false);
     abortRef.current = false;
 
-    const results: CheckResult[] = [];
+    if (currentIndex === 0) {
+      resultsRef.current = [];
+    }
 
     for (let i = currentIndex; i < accounts.length; i++) {
       if (abortRef.current) break;
@@ -99,6 +102,7 @@ export default function BulkUpload({
           status: data.status === "HIT" ? "live" : "die",
           uid: data.uid,
           username: data.username,
+          nickname: data.nickname,
           aov_name: data.aov_name,
           aov_rank: data.aov_rank,
           aov_level: data.aov_level,
@@ -116,13 +120,17 @@ export default function BulkUpload({
           email_verified: data.email_verified,
           mobile_bound: data.mobile_bound,
           fb_linked: data.fb_linked,
+          account_secured: data.account_secured,
+          password_set: data.password_set,
+          fc_name: data.fc_name,
+          fc_level: data.fc_level,
           garena_created: data.garena_created,
           last_login: data.last_login,
+          last_session_ip: data.last_session_ip,
           last_session_country: data.last_session_country,
-          raw: data,
         };
 
-        results.push(result);
+        resultsRef.current.push(result);
         onResult(result);
       } catch {
         const errResult: CheckResult = {
@@ -130,7 +138,7 @@ export default function BulkUpload({
           mk,
           status: "error",
         };
-        results.push(errResult);
+        resultsRef.current.push(errResult);
         onResult(errResult);
       }
 
@@ -145,7 +153,7 @@ export default function BulkUpload({
 
     setRunning(false);
     setCurrentIndex(accounts.length);
-    onAllDone?.(results);
+    onAllDone?.(resultsRef.current);
   };
 
   const handlePause = () => {
@@ -158,7 +166,7 @@ export default function BulkUpload({
     runCheck();
   };
 
-  const progress = accounts.length > 0 ? ((currentIndex + 1) / accounts.length) * 100 : 0;
+  const progress = accounts.length > 0 ? Math.min(((currentIndex + 1) / accounts.length) * 100, 100) : 0;
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 shadow-lg border border-zinc-200 dark:border-zinc-800">
@@ -233,7 +241,7 @@ export default function BulkUpload({
           <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
-              style={{ width: `${running || paused ? progress : 0}%` }}
+              style={{ width: `${running || paused ? progress : currentIndex >= accounts.length && accounts.length > 0 ? 100 : 0}%` }}
             />
           </div>
 
