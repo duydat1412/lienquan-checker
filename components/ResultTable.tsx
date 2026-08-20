@@ -18,7 +18,7 @@ export default function ResultTable({ results, onClear }: ResultTableProps) {
   const exportCSV = () => {
     const headers = [
       "Tài Khoản", "Mật Khẩu", "Trạng Thái", "UID", "Tên LQ",
-      "Rank", "Level", "Tướng", "Skin", "Khu Vực", "Đăng Nhập Cuối"
+      "Rank", "Level", "Tướng", "Skin", "SS", "SSS", "Anime", "Khu Vực", "Đăng Nhập Cuối"
     ];
     const rows = results.map((r) => [
       r.tk,
@@ -30,6 +30,9 @@ export default function ResultTable({ results, onClear }: ResultTableProps) {
       r.aov_level?.toString() || "",
       r.aov_total_champs?.toString() || "",
       r.aov_total_skins?.toString() || "",
+      r.aov_ss?.toString() || "",
+      r.aov_sss?.toString() || "",
+      r.aov_anime?.toString() || "",
       r.region || "",
       r.last_login || "",
     ]);
@@ -54,6 +57,12 @@ export default function ResultTable({ results, onClear }: ResultTableProps) {
       "Level": r.aov_level || "",
       "Tướng": r.aov_total_champs || "",
       "Skin": r.aov_total_skins || "",
+      "Skin SS": r.aov_ss || "",
+      "Skin SS List": (r.aov_ss_list || []).join(", ") || "",
+      "Skin SSS": r.aov_sss || "",
+      "Skin SSS List": (r.aov_sss_list || []).join(", ") || "",
+      "Skin Anime": r.aov_anime || "",
+      "Skin Anime List": (r.aov_anime_list || []).join(", ") || "",
       "Khu Vực": r.region || "",
       "Garena Shells": r.shells || 0,
       "Email Verified": r.email_verified ? "Yes" : "No",
@@ -116,6 +125,9 @@ export default function ResultTable({ results, onClear }: ResultTableProps) {
               <th className="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Lv</th>
               <th className="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Tướng</th>
               <th className="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Skin</th>
+              <th className="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">SS</th>
+              <th className="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">SSS</th>
+              <th className="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">Anime</th>
               <th className="text-left py-3 px-2 font-medium text-zinc-600 dark:text-zinc-400">KV</th>
             </tr>
           </thead>
@@ -161,6 +173,27 @@ export default function ResultTable({ results, onClear }: ResultTableProps) {
                 <td className="py-3 px-2">{result.aov_total_champs || "-"}</td>
                 <td className="py-3 px-2">{result.aov_total_skins || "-"}</td>
                 <td className="py-3 px-2">
+                  {result.aov_ss ? (
+                    <span title={(result.aov_ss_list || []).join(", ")} className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 cursor-help">{result.aov_ss}</span>
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td className="py-3 px-2">
+                  {result.aov_sss ? (
+                    <span title={(result.aov_sss_list || []).join(", ")} className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800 cursor-help">{result.aov_sss}</span>
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td className="py-3 px-2">
+                  {result.aov_anime ? (
+                    <span title={(result.aov_anime_list || []).join(", ")} className="px-2 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-800 cursor-help">{result.aov_anime}</span>
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td className="py-3 px-2">
                   <span className="text-xs">{result.region || "-"}</span>
                 </td>
               </tr>
@@ -182,6 +215,9 @@ export default function ResultTable({ results, onClear }: ResultTableProps) {
               <p>Rank: {result.aov_rank}</p>
               <p>Level: {result.aov_level}</p>
               <p>Banned: {result.aov_banned}</p>
+              <p>Skin SS: {result.aov_ss} {result.aov_ss ? `(${(result.aov_ss_list || []).join(", ")})` : ""}</p>
+              <p>Skin SSS: {result.aov_sss} {result.aov_sss ? `(${(result.aov_sss_list || []).join(", ")})` : ""}</p>
+              <p>Skin Anime: {result.aov_anime} {result.aov_anime ? `(${(result.aov_anime_list || []).join(", ")})` : ""}</p>
               <p>Garena Shells: {result.shells}</p>
               <p>Email Verified: {result.email_verified ? "Yes" : "No"}</p>
               <p>FB Linked: {result.fb_linked ? "Yes" : "No"}</p>

@@ -12,6 +12,12 @@ export interface CheckResult {
   aov_banned?: string;
   aov_total_skins?: number;
   aov_total_champs?: number;
+  aov_ss?: number;
+  aov_ss_list?: string[];
+  aov_sss?: number;
+  aov_sss_list?: string[];
+  aov_anime?: number;
+  aov_anime_list?: string[];
   region?: string;
   shells?: number;
   email_verified?: boolean;
