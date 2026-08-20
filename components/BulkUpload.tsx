@@ -1,0 +1,284 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { Upload, Play, Pause, Loader2, FileText } from "lucide-react";
+import { checkAccount } from "@/lib/api";
+import { CheckResult, ApiRawResponse } from "@/lib/types";
+
+interface BulkUploadProps {
+  onResult: (result: CheckResult) => void;
+  onAllDone?: (results: CheckResult[]) => void;
+  apiKey?: string;
+  apiSecret?: string;
+  proxy?: string;
+  disabled?: boolean;
+}
+
+export default function BulkUpload({
+  onResult,
+  onAllDone,
+  apiKey,
+  apiSecret,
+  proxy,
+  disabled,
+}: BulkUploadProps) {
+  const [accounts, setAccounts] = useState<{ tk: string; mk: string }[]>([]);
+  const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [delay, setDelay] = useState(300);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef(false);
+
+  const parseFile = (text: string) => {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    const parsed: { tk: string; mk: string }[] = [];
+
+    for (const line of lines) {
+      const sep = line.includes("|") ? "|" : line.includes(":") ? ":" : null;
+      if (!sep) continue;
+      const [tk, mk] = line.split(sep).map((s) => s.trim());
+      if (tk && mk) parsed.push({ tk, mk });
+    }
+
+    return parsed;
+  };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const parsed = parseFile(text);
+      setAccounts(parsed);
+      setCurrentIndex(0);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const parsed = parseFile(text);
+      setAccounts(parsed);
+      setCurrentIndex(0);
+    };
+    reader.readAsText(file);
+  };
+
+  const runCheck = async () => {
+    if (accounts.length === 0) return;
+
+    setRunning(true);
+    setPaused(false);
+    abortRef.current = false;
+
+    const results: CheckResult[] = [];
+
+    for (let i = currentIndex; i < accounts.length; i++) {
+      if (abortRef.current) break;
+
+      setCurrentIndex(i);
+      const { tk, mk } = accounts[i];
+
+      const startTime = Date.now();
+
+      try {
+        const data: ApiRawResponse = await checkAccount(tk, mk, apiKey, apiSecret, proxy);
+
+        const result: CheckResult = {
+          tk,
+          mk,
+          status: data.status === "HIT" ? "live" : "die",
+          uid: data.uid,
+          username: data.username,
+          aov_name: data.aov_name,
+          aov_rank: data.aov_rank,
+          aov_level: data.aov_level,
+          aov_banned: data.aov_banned,
+          aov_total_skins: data.aov_total_skins,
+          aov_total_champs: data.aov_total_champs,
+          region: data.region,
+          shells: data.shells,
+          email_verified: data.email_verified,
+          mobile_bound: data.mobile_bound,
+          fb_linked: data.fb_linked,
+          garena_created: data.garena_created,
+          last_login: data.last_login,
+          last_session_country: data.last_session_country,
+          raw: data,
+        };
+
+        results.push(result);
+        onResult(result);
+      } catch {
+        const errResult: CheckResult = {
+          tk,
+          mk,
+          status: "error",
+        };
+        results.push(errResult);
+        onResult(errResult);
+      }
+
+      if (i < accounts.length - 1 && !abortRef.current) {
+        const elapsed = Date.now() - startTime;
+        const remainingDelay = Math.max(0, delay - elapsed);
+        if (remainingDelay > 0) {
+          await new Promise((r) => setTimeout(r, remainingDelay));
+        }
+      }
+    }
+
+    setRunning(false);
+    setCurrentIndex(accounts.length);
+    onAllDone?.(results);
+  };
+
+  const handlePause = () => {
+    abortRef.current = true;
+    setPaused(true);
+    setRunning(false);
+  };
+
+  const handleResume = () => {
+    runCheck();
+  };
+
+  const progress = accounts.length > 0 ? ((currentIndex + 1) / accounts.length) * 100 : 0;
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 shadow-lg border border-zinc-200 dark:border-zinc-800">
+      <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+        <Upload className="w-5 h-5" />
+        Check Hàng Loạt
+      </h2>
+
+      {/* Drop zone */}
+      <div
+        onDrop={disabled ? undefined : handleDrop}
+        onDragOver={disabled ? undefined : (e) => e.preventDefault()}
+        onClick={disabled ? undefined : () => fileRef.current?.click()}
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          disabled
+            ? "border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 cursor-not-allowed opacity-60"
+            : "border-zinc-300 dark:border-zinc-700 cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
+        }`}
+      >
+        <FileText className="w-10 h-10 mx-auto mb-3 text-zinc-400" />
+        {disabled ? (
+          <p className="text-sm text-zinc-500">
+            Nhập API Credentials ở trên để sử dụng
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Kéo thả file <strong>.txt</strong> vào đây hoặc{" "}
+              <span className="text-blue-600 underline">chọn file</span>
+            </p>
+            <p className="text-xs text-zinc-400 mt-2">
+              Định dạng: <code>tk|mk</code> hoặc <code>tk:mk</code> (mỗi dòng 1 tài khoản)
+            </p>
+          </>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".txt"
+          onChange={handleFile}
+          className="hidden"
+        />
+      </div>
+
+      {/* Config */}
+      {accounts.length > 0 && (
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+            <span className="text-sm">
+              Đã load: <strong>{accounts.length}</strong> tài khoản
+            </span>
+            <span className="text-sm text-zinc-500">
+              Đã check: <strong>{currentIndex}</strong> / {accounts.length}
+            </span>
+          </div>
+
+          {/* Delay setting */}
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium">Delay:</label>
+            <input
+              type="number"
+              value={delay}
+              onChange={(e) => setDelay(Math.max(0, Number(e.target.value)))}
+              min={0}
+              step={100}
+              className="w-24 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-xs text-zinc-500">ms (0 = chạy ngay)</span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
+              style={{ width: `${running || paused ? progress : 0}%` }}
+            />
+          </div>
+
+          {/* Controls */}
+          <div className="flex gap-3">
+            {!running && !paused && (
+              <button
+                onClick={runCheck}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                Bắt đầu Check
+              </button>
+            )}
+
+            {running && (
+              <button
+                onClick={handlePause}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors"
+              >
+                <Pause className="w-4 h-4" />
+                Tạm Dừng
+              </button>
+            )}
+
+            {paused && (
+              <button
+                onClick={handleResume}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                Tiếp Tục
+              </button>
+            )}
+
+            {(running || paused) && (
+              <button
+                onClick={() => {
+                  abortRef.current = true;
+                  setRunning(false);
+                  setPaused(false);
+                  setCurrentIndex(0);
+                }}
+                className="px-4 py-2.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 font-medium rounded-lg transition-colors"
+              >
+                Dừng
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
