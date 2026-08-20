@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Swords, Settings, Search, Upload, Key } from "lucide-react";
+import { Swords, Settings, Search, Upload, Key, Heart } from "lucide-react";
 import CheckForm from "@/components/CheckForm";
 import BulkUpload from "@/components/BulkUpload";
 import ResultTable from "@/components/ResultTable";
@@ -141,6 +141,27 @@ export default function Home() {
         {/* Results */}
         <ResultTable results={results} onClear={handleClear} />
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 mt-8">
+        <div className="max-w-5xl mx-auto px-4 py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
+            <div className="flex items-center gap-1.5">
+              Made with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> by <strong className="text-zinc-700 dark:text-zinc-300">Duy Dat</strong>
+            </div>
+            <div className="flex items-center gap-4">
+              <a
+                href="https://fb.com/duydat141207"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-blue-600 transition-colors"
+              >
+                Contact: fb.com/duydat141207
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
