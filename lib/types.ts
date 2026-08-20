@@ -1,3 +1,5 @@
+export type CheckResponse = ApiRawResponse;
+
 export interface CheckResult {
   tk: string;
   mk: string;
