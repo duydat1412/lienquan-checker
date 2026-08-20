@@ -28,23 +28,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const params = new URLSearchParams({
-      username: username || "",
-      password: password || "",
-      tk,
-      mk,
-    });
-
-    if (proxy) {
-      params.append("proxy", proxy);
-    }
-
-    const url = `${API_BASE}/api/lienquan?${params.toString()}`;
+    const url = `${API_BASE}/api/lienquan?username=${encodeURIComponent(username || "")}&password=${encodeURIComponent(password || "")}&tk=${encodeURIComponent(tk)}&mk=${encodeURIComponent(mk)}${proxy ? `&proxy=${encodeURIComponent(proxy)}` : ""}`;
     console.log(`[CHECK] 🔄 ${tk} → calling API...`);
 
     const response = await fetch(url, {
       method: "GET",
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(120000),
     });
 
     const elapsed = Date.now() - start;
@@ -72,7 +61,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[CHECK] 📋 ${tk} → status=${data.status} name=${data.aov_name || "?"} rank=${data.aov_rank || "?"}`);
+    console.log(`[CHECK] 📋 ${tk} → status=${data.status} detail=${data.detail || "?"} name=${data.aov_name || "?"} rank=${data.aov_rank || "?"}`);
     return NextResponse.json(data);
   } catch (error) {
     const elapsed = Date.now() - start;

@@ -20,9 +20,11 @@ export default function CheckForm({ onResult, apiKey, apiSecret, proxy, disabled
   const [error, setError] = useState<string | null>(null);
 
   const handleInput = (value: string) => {
-    const sep = value.includes(":") ? ":" : value.includes("|") ? "|" : null;
+    const sep = value.includes("|") ? "|" : value.includes(":") ? ":" : null;
     if (sep) {
-      const [parsedTk, parsedMk] = value.split(sep).map((s) => s.trim());
+      const idx = value.indexOf(sep);
+      const parsedTk = value.slice(0, idx).trim();
+      const parsedMk = value.slice(idx + 1).trim();
       if (parsedTk && parsedMk) {
         setTk(parsedTk);
         setMk(parsedMk);

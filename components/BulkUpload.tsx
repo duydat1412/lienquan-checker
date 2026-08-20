@@ -40,7 +40,9 @@ export default function BulkUpload({
     for (const line of lines) {
       const sep = line.includes("|") ? "|" : line.includes(":") ? ":" : null;
       if (!sep) continue;
-      const [tk, mk] = line.split(sep).map((s) => s.trim());
+      const idx = line.indexOf(sep);
+      const tk = line.slice(0, idx).trim();
+      const mk = line.slice(idx + 1).trim();
       if (tk && mk) parsed.push({ tk, mk });
     }
 
